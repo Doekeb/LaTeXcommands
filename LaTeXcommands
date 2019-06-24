@@ -1,0 +1,63 @@
+#!/usr/bin/env python2
+
+import re
+import fileinput
+import argparse
+
+# BUG: I don't know how to handle the @ symbol in cases of \makeatletter
+# TODO: Print line numbers
+
+def get_commands(s):
+    '''
+    Find all commands defined in a string, creating a dictionary with all values False
+    '''
+    commands = {}
+    i = s.find("\\newcommand")
+    while i != -1:
+        commands[get_command(s[i:])] = False
+        i = s.find("\\newcommand",i+1)
+    return commands
+
+def get_command(s):
+    '''
+    Assume s is a string beginning with '\newcommand', get the name of the new command
+    '''
+    return re.search(r"\\[a-zA-Z]*",s[11:]).group()
+
+def count_command(command, s):
+    '''
+    Counts how many times command is used in string s
+    '''
+    return len(re.findall('\\'+command+'[^a-zA-Z]', s))
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(prog='LaTeXcommands', description='LaTeXcommands is a command cleanup utility for LaTeX.')
+    parser.add_argument('filename', help='Name of the main .tex file')
+    parser.add_argument('-c', '--count', action='store_true', default=False,
+                        help="count the number of occurences of each command instead of generating a list of unused commands (default: %(default)s)")
+    parser.add_argument('-u', '--used', action='store_true', default=False,
+                        help="display (only) a list of the used commands instead of the unused commands (default: %(default)s)")
+    args = parser.parse_args()
+    filename = args.filename
+    count = args.count
+    used = args.used
+
+    with open(filename,'r') as file:
+        contents = file.read()
+        commands = get_commands(contents)
+        for command in commands:
+            commands[command] = count_command(command, contents)-1
+
+    if count:
+        print "These are the numbers of times each command is used:"
+        max_command_length = max([len(key) for key in commands])
+        max_number_length = max([len(str(value)) for value in commands.values()])
+        print ('{:<%ss}{:<%ss}'%(max_command_length+1, max_number_length)).format('command', 'value')
+        for command, value in commands.items():
+            if (used and value > 0) or not used:
+                print ('{:<%ss}{:>%sd}'%(max_command_length+1, max_number_length)).format(command, value)
+    else:
+        print "These are the commands which are %s:"%("used" if used else "unused")
+        for command, value in commands.items():
+            if (used and value > 0) or (not used and value == 0):
+                print command
