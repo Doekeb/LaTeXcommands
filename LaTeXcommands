@@ -15,7 +15,7 @@ def get_commands(s):
     commands = {}
     i = s.find("\\newcommand")
     while i != -1:
-        line = len(re.findall('[^\\\\]?\\n', s[:i]))+1
+        line = len(re.findall('[^\\\\]??\\n', s[:i]))+1
         commands[get_command(s[i:])] = [0,line]
         i = s.find("\\newcommand",i+1)
     return commands
