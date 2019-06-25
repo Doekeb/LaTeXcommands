@@ -5,22 +5,25 @@ import fileinput
 import argparse
 
 # BUG: I don't know how to handle the @ symbol in cases of \makeatletter
-# TODO: Print line numbers
 
 def get_commands(s):
     '''
-    Find all commands defined in a string, creating a dictionary with all values False
+    Find all commands defined in a string, creating a dictionary with list
+    (pair) values, first entry defaults to 0, second entry is the line on which
+    the command is defined.
     '''
     commands = {}
     i = s.find("\\newcommand")
     while i != -1:
-        commands[get_command(s[i:])] = False
+        line = len(re.findall('[^\\\\]?\\n', s[:i]))+1
+        commands[get_command(s[i:])] = [0,line]
         i = s.find("\\newcommand",i+1)
     return commands
 
 def get_command(s):
     '''
-    Assume s is a string beginning with '\newcommand', get the name of the new command
+    Gets the name of the new command
+    Assumes s is a string beginning with '\newcommand'
     '''
     return re.search(r"\\[a-zA-Z]*",s[11:]).group()
 
@@ -34,30 +37,48 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(prog='LaTeXcommands', description='LaTeXcommands is a command cleanup utility for LaTeX.')
     parser.add_argument('filename', help='Name of the main .tex file')
     parser.add_argument('-c', '--count', action='store_true', default=False,
-                        help="count the number of occurences of each command instead of generating a list of unused commands (default: %(default)s)")
+                        help="count the number of occurences of each command instead of generating a list of unused commands "
+                             "(this is most useful in conjunction with '--used') (default: %(default)s)")
     parser.add_argument('-u', '--used', action='store_true', default=False,
-                        help="display (only) a list of the used commands instead of the unused commands (default: %(default)s)")
+                        help="display a list of the used commands instead of the unused commands (default: %(default)s)")
+    parser.add_argument('-l', '--lines_off', action='store_true', default=False,
+                        help="suppress the display of line numbers on which the commands are defined (default: %(default)s)")
     args = parser.parse_args()
     filename = args.filename
     count = args.count
     used = args.used
+    lines = not args.lines_off
 
     with open(filename,'r') as file:
         contents = file.read()
         commands = get_commands(contents)
         for command in commands:
-            commands[command] = count_command(command, contents)-1
+            commands[command][0] = count_command(command, contents)-1
+
+    command_header = 'command'
+    max_command_length = max([len(key) for key in commands]+[len(command_header)])
+    format_string = '{:<%s}'%(max_command_length)
+    format_header_args = (command_header,)
 
     if count:
-        print "These are the numbers of times each command is used:"
-        max_command_length = max([len(key) for key in commands])
-        max_number_length = max([len(str(value)) for value in commands.values()])
-        print ('{:<%ss}{:<%ss}'%(max_command_length+1, max_number_length)).format('command', 'value')
-        for command, value in commands.items():
-            if (used and value > 0) or not used:
-                print ('{:<%ss}{:>%sd}'%(max_command_length+1, max_number_length)).format(command, value)
-    else:
-        print "These are the commands which are %s:"%("used" if used else "unused")
-        for command, value in commands.items():
-            if (used and value > 0) or (not used and value == 0):
-                print command
+        occurence_header = 'occurences'
+        max_occurence_length = max([len(str(value[0])) for value in commands.values()]+[len(occurence_header)])
+        format_string += '{:>%s}'%(max_occurence_length+1)
+        format_header_args += (occurence_header,)
+
+    if lines:
+        line_header = 'line'
+        max_line_length = max([len(str(value[1])) for value in commands.values()]+[len(line_header)])
+        format_string += '{:>%s}'%(max_line_length+1)
+        format_header_args += (line_header,)
+
+    print "These are the commands which are %s:"%("used" if used else "unused")
+    print format_string.format(*format_header_args)
+    for command, value in sorted(commands.items(), cmp=lambda x,y:cmp(x[1][1],y[1][1])):
+        if (used and value[0] > 0) or (not used and value[0] == 0):
+            format_args = (command,)
+            if count:
+                format_args += (value[0],)
+            if lines:
+                format_args += (value[1],)
+            print format_string.format(*format_args)
