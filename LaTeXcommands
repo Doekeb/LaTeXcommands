@@ -5,6 +5,7 @@ import fileinput
 import argparse
 
 # BUG: I don't know how to handle the @ symbol in cases of \makeatletter
+# BUG: Don't find commands which are in a comment
 
 def get_commands(s):
     '''
@@ -38,15 +39,15 @@ if __name__ == "__main__":
     parser.add_argument('filename', help='Name of the main .tex file')
     parser.add_argument('-c', '--count', action='store_true', default=False,
                         help="count the number of occurences of each command instead of generating a list of unused commands "
-                             "(this is most useful in conjunction with '--used') (default: %(default)s)")
-    parser.add_argument('-u', '--used', action='store_true', default=False,
-                        help="display a list of the used commands instead of the unused commands (default: %(default)s)")
+                             "(this is most useful in conjunction with '--display') (default: %(default)s)")
+    parser.add_argument('-d', '--display', required=False, choices=['used', 'unused', 'all'], default='unused',
+                        help="which commands will be displayed (default: %(default)s)")
     parser.add_argument('-l', '--lines_off', action='store_true', default=False,
                         help="suppress the display of line numbers on which the commands are defined (default: %(default)s)")
     args = parser.parse_args()
     filename = args.filename
     count = args.count
-    used = args.used
+    display = args.display
     lines = not args.lines_off
 
     with open(filename,'r') as file:
@@ -72,10 +73,10 @@ if __name__ == "__main__":
         format_string += '{:>%s}'%(max_line_length+1)
         format_header_args += (line_header,)
 
-    print "These are the commands which are %s:"%("used" if used else "unused")
+    print "These are %sthe commands%s:"%("all " if display=="all" else "", " which are %s"%(display) if display!="all" else "")
     print format_string.format(*format_header_args)
     for command, value in sorted(commands.items(), cmp=lambda x,y:cmp(x[1][1],y[1][1])):
-        if (used and value[0] > 0) or (not used and value[0] == 0):
+        if (display=="all") or (display=="used" and value[0] > 0) or (display=="unused" and value[0] == 0):
             format_args = (command,)
             if count:
                 format_args += (value[0],)
