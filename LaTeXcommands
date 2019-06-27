@@ -37,24 +37,32 @@ def count_command(command, s):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(prog='LaTeXcommands', description='LaTeXcommands is a command cleanup utility for LaTeX.')
     parser.add_argument('filename', help='Name of the main .tex file')
+    parser.add_argument('-s', '--sty', nargs=1,
+                        help="find commands in the provided .sty file instead of the main .tex file "
+                        "(count occurences in both .sty and .tex files)")
     parser.add_argument('-c', '--count', action='store_true', default=False,
                         help="count the number of occurences of each command instead of generating a list of unused commands "
-                             "(this is most useful in conjunction with '--display') (default: %(default)s)")
+                             "(this is most useful in conjunction with '-d all' or '-d used') (default: %(default)s)")
     parser.add_argument('-d', '--display', required=False, choices=['used', 'unused', 'all'], default='unused',
                         help="which commands will be displayed (default: %(default)s)")
     parser.add_argument('-l', '--lines_off', action='store_true', default=False,
                         help="suppress the display of line numbers on which the commands are defined (default: %(default)s)")
     args = parser.parse_args()
     filename = args.filename
+    sty = args.sty[0]
     count = args.count
     display = args.display
     lines = not args.lines_off
 
+    command_filename = filename if sty==None else sty
+    with open(command_filename,'r') as command_file:
+        command_contents = command_file.read()
+    commands = get_commands(command_contents)
+
     with open(filename,'r') as file:
-        contents = file.read()
-        commands = get_commands(contents)
-        for command in commands:
-            commands[command][0] = count_command(command, contents)-1
+        contents = command_contents if sty==None else command_contents + "\n" + file.read()
+    for command in commands:
+        commands[command][0] = count_command(command, contents)-1
 
     command_header = 'command'
     max_command_length = max([len(key) for key in commands]+[len(command_header)])
