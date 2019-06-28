@@ -5,7 +5,7 @@ import fileinput
 import argparse
 
 # BUG: I don't know how to handle the @ symbol in cases of \makeatletter
-# BUG: Don't find commands which are in a comment
+# BUG: Don't find occurences which are in a comment
 
 def get_commands(s):
     '''
@@ -16,8 +16,11 @@ def get_commands(s):
     commands = {}
     i = s.find("\\newcommand")
     while i != -1:
-        line = len(re.findall('[^\\\\]??\\n', s[:i]))+1
-        commands[get_command(s[i:])] = [0,line]
+        newline_index = s[i-1::-1].find("\n")
+        comment_index = s[i-1::-1].find("%")
+        if comment_index == -1 or comment_index > newline_index:
+            line = len(re.findall('[^\\\\]??\\n', s[:i]))+1
+            commands[get_command(s[i:])] = [0,line]
         i = s.find("\\newcommand",i+1)
     return commands
 
@@ -37,7 +40,7 @@ def count_command(command, s):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(prog='LaTeXcommands', description='LaTeXcommands is a command cleanup utility for LaTeX.')
     parser.add_argument('filename', help='Name of the main .tex file')
-    parser.add_argument('-s', '--sty', nargs=1,
+    parser.add_argument('-s', '--sty', metavar='styfile', type=str,
                         help="find commands in the provided .sty file instead of the main .tex file "
                         "(count occurences in both .sty and .tex files)")
     parser.add_argument('-c', '--count', action='store_true', default=False,
@@ -49,7 +52,7 @@ if __name__ == "__main__":
                         help="suppress the display of line numbers on which the commands are defined (default: %(default)s)")
     args = parser.parse_args()
     filename = args.filename
-    sty = args.sty[0]
+    sty = args.sty
     count = args.count
     display = args.display
     lines = not args.lines_off
