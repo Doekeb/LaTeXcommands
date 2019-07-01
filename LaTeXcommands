@@ -1,12 +1,11 @@
 #!/usr/bin/env python2
 # -*- coding: utf-8 -*-
 
-import re
+import regex
 import fileinput
 import argparse
 
 # BUG: I don't know how to handle the @ symbol in cases of \makeatletter
-# BUG: Don't find occurences which are in a comment
 
 def get_commands(s):
     '''
@@ -20,7 +19,7 @@ def get_commands(s):
         newline_index = s[i-1::-1].find("\n")
         comment_index = s[i-1::-1].find("%")
         if comment_index == -1 or comment_index > newline_index:
-            line = len(re.findall('[^\\\\]??\\n', s[:i]))+1
+            line = len(regex.findall('[^\\\\]??\\n', s[:i]))+1
             commands[get_command(s[i:])] = [0,line]
         i = s.find("\\newcommand",i+1)
     return commands
@@ -30,13 +29,13 @@ def get_command(s):
     Gets the name of the new command
     Assumes s is a string beginning with '\newcommand'
     '''
-    return re.search(r"\\[a-zA-Z]*",s[11:]).group()
+    return regex.search(r"\\[a-zA-Z]*",s[11:]).group()
 
 def count_command(command, s):
     '''
     Counts how many times command is used in string s
     '''
-    return len(re.findall('\\'+command+'[^a-zA-Z]', s))
+    return len(regex.findall('(?<!%[^\\n]*)\\'+command+'(?![a-zA-Z])', s))
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(prog='LaTeXcommands', description='LaTeXcommands is a command cleanup utility for LaTeX.')
@@ -68,20 +67,20 @@ if __name__ == "__main__":
     for command in commands:
         commands[command][0] = count_command(command, contents)-1
 
-    command_header = 'command'
-    max_command_length = max([len(key) for key in commands]+[len(command_header)])
+    command_header = 'Command'
+    max_command_length = max([len(key) for key, value in commands.items() if display=="all" or (display=="unused" and value[0]==0) or (display=="used" and value[0]!=0)]+[len(command_header)])
     format_string = '{:<%s}'%(max_command_length)
     format_header_args = (command_header,)
 
     if count:
-        occurence_header = 'occurences'
-        max_occurence_length = max([len(str(value[0])) for value in commands.values()]+[len(occurence_header)])
+        occurence_header = 'Occurences'
+        max_occurence_length = max([len(str(value[0])) for value in commands.values() if display=="all" or (display=="unused" and value[0]==0) or (display=="used" and value[0]!=0)]+[len(occurence_header)])
         format_string += '{:>%s}'%(max_occurence_length+1)
         format_header_args += (occurence_header,)
 
     if lines:
-        line_header = 'line'
-        max_line_length = max([len(str(value[1])) for value in commands.values()]+[len(line_header)])
+        line_header = 'Line'
+        max_line_length = max([len(str(value[1])) for value in commands.values() if display=="all" or (display=="unused" and value[0]==0) or (display=="used" and value[0]!=0)]+[len(line_header)])
         format_string += '{:>%s}'%(max_line_length+1)
         format_header_args += (line_header,)
 
