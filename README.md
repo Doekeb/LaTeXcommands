@@ -1,6 +1,11 @@
 # LaTeXcommands
 LaTeXcommands is a command cleanup utility for LaTeX.
 
+## Dependencies and Installation
+1. Install regex (https://pypi.org/project/regex/) with `pip install regex`
+2. Download the file LaTeXcommands and save it somewhere in your `$PATH`.
+3. You may need to make `LaTeXcommands` executable by doing `chmod 755 LaTeXcommands`.
+
 ## Usage
 ```
 LaTeXcommands [-h] [-s styfile] [-c] [-d {used,unused,all}] [-l]
